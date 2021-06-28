@@ -395,7 +395,7 @@ class Driver:
         val = d.check_pvc(value_pvc_pass, pvc_name, created_objects)
         if val is True:
             ds_name = d.get_random_name("ds")
-            d.create_ds(value_ds_pass,ds_name,pvc_name,created_objects)
+            d.create_ds(value_ds_pass,ds_name,pvc_name,created_objects,self.image_name)
             d.check_ds(ds_name,value_ds_pass,created_objects)
         cleanup.clean_with_created_objects(created_objects)
         
@@ -447,7 +447,7 @@ class Snapshot():
         cleanup.set_keep_objects(keep_objects)
         cleanup.set_test_namespace_value(test_namespace)
 
-    def test_dynamic(self, value_sc, test_restore, value_vs_class=None, number_of_snapshots=None, reason=None, restore_sc=None, restore_pvc=None):
+    def test_dynamic(self, value_sc, test_restore, value_vs_class=None, number_of_snapshots=None, reason=None, restore_sc=None, restore_pvc=None, io_value=None):
         if value_vs_class is None:
             value_vs_class = self.value_vs_class
         if number_of_snapshots is None:
@@ -455,7 +455,8 @@ class Snapshot():
         number_of_restore = 1
 
         for pvc_value in self.value_pvc:
-
+            
+            pvc_value = copy.deepcopy(pvc_value)
             created_objects = get_cleanup_dict()
             LOGGER.info("-"*100)
             sc_name = d.get_random_name("sc")
@@ -467,7 +468,7 @@ class Snapshot():
             d.check_pvc(pvc_value, pvc_name, created_objects)
 
             pod_name = d.get_random_name("snap-start-pod")
-            value_pod = {"mount_path": "/usr/share/nginx/html/scale", "read_only": "False"}
+            value_pod = {"mount_path": "/usr/share/nginx/html/scale", "read_only": "False", "io_value":io_value}
             d.create_pod(value_pod, pvc_name, pod_name, created_objects, self.image_name)
             d.check_pod(value_pod, pod_name, created_objects)
             d.create_file_inside_pod(value_pod, pod_name, created_objects)
@@ -503,14 +504,16 @@ class Snapshot():
                         d.create_pod(value_pod, restored_pvc_name, snap_pod_name, created_objects, self.image_name)
                         d.check_pod(value_pod, snap_pod_name, created_objects)
                         d.check_file_inside_pod(value_pod, snap_pod_name, created_objects)
+                        d.cleanup_file_inside_pod(value_pod, snap_pod_name, created_objects)
                         cleanup.delete_pod(snap_pod_name, created_objects)
                         cleanup.check_pod_deleted(snap_pod_name, created_objects)
                     vol_name=cleanup.delete_pvc(restored_pvc_name, created_objects)
                     cleanup.check_pvc_deleted(restored_pvc_name,vol_name, created_objects)
 
+            d.cleanup_file_inside_pod(value_pod, pod_name, created_objects)           
             cleanup.clean_with_created_objects(created_objects)
 
-    def test_static(self, value_sc, test_restore, value_vs_class=None, number_of_snapshots=None, restore_sc=None, restore_pvc=None):
+    def test_static(self, value_sc, test_restore, value_vs_class=None, number_of_snapshots=None, restore_sc=None, restore_pvc=None, io_value=None):
         if value_vs_class is None:
             value_vs_class = self.value_vs_class
         if number_of_snapshots is None:
@@ -519,6 +522,7 @@ class Snapshot():
 
         for pvc_value in self.value_pvc:
 
+            pvc_value = copy.deepcopy(pvc_value)
             created_objects = get_cleanup_dict()
             LOGGER.info("-"*100)
             sc_name = d.get_random_name("sc")
@@ -530,7 +534,7 @@ class Snapshot():
             d.check_pvc(pvc_value, pvc_name, created_objects)
 
             pod_name = d.get_random_name("snap-start-pod")
-            value_pod = {"mount_path": "/usr/share/nginx/html/scale", "read_only": "False"}
+            value_pod = {"mount_path": "/usr/share/nginx/html/scale", "read_only": "False", "io_value":io_value}
             d.create_pod(value_pod, pvc_name, pod_name, created_objects, self.image_name)
             d.check_pod(value_pod, pod_name, created_objects)
             d.create_file_inside_pod(value_pod, pod_name, created_objects)
@@ -580,11 +584,13 @@ class Snapshot():
                         d.create_pod(value_pod, restored_pvc_name, snap_pod_name, created_objects, self.image_name)
                         d.check_pod(value_pod, snap_pod_name, created_objects)
                         d.check_file_inside_pod(value_pod, snap_pod_name, created_objects, volume_name)
+                        d.cleanup_file_inside_pod(value_pod, snap_pod_name, created_objects, volume_name)
                         cleanup.delete_pod(snap_pod_name, created_objects)
                         cleanup.check_pod_deleted(snap_pod_name, created_objects)
                     vol_name=cleanup.delete_pvc(restored_pvc_name, created_objects)
                     cleanup.check_pvc_deleted(restored_pvc_name,vol_name, created_objects)
 
+            d.cleanup_file_inside_pod(value_pod, pod_name, created_objects)
             cleanup.clean_with_created_objects(created_objects)
 
 
